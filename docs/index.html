@@ -171,7 +171,7 @@
     <div class="cap">BTC/USD, log scale, weekly · 200-week moving average · key events</div>
     <div class="chartwrap"><canvas id="priceChart"></canvas></div>
   </div>
-  <p class="footnote">Source: Yahoo Finance daily closes since 2014, resampled weekly. Event markers from the event study in §5.</p>
+  <p class="footnote">Source: Yahoo Finance daily closes since 2014, resampled weekly. Event markers from the event study in §6.</p>
 </section>
 
 <section id="history">
@@ -254,8 +254,23 @@
   <p class="footnote">The spike at lag −1 (0.57) vs ~0 at lag +1 means price moves first and sentiment records it the next day. Sentiment does not cause the fall; it measures it. Source: alternative.me F&amp;G, 3,069 daily observations.</p>
 </section>
 
-<section id="rates">
+<section id="nlp">
   <div class="secnum">05</div>
+  <h2>Cross-reference: what the news text itself says (NLP)</h2>
+  <div class="prose" id="nlp-prose"></div>
+  <div class="chartbox">
+    <div class="cap">NLP news tone (VADER on headlines, monthly) vs Fear &amp; Greed index</div>
+    <div class="chartwrap short"><canvas id="nlpChart"></canvas></div>
+  </div>
+  <div class="chartbox">
+    <div class="cap">Next-month BTC return by press-tone tercile, 2018–2026</div>
+    <div class="chartwrap short"><canvas id="nlpBucketChart"></canvas></div>
+  </div>
+  <p class="footnote" id="nlp-foot"></p>
+</section>
+
+<section id="rates">
+  <div class="secnum">06</div>
   <h2>Interest rates, money supply, and governments</h2>
   <div class="prose">
     <p><strong>Rates:</strong> daily and weekly yield-change betas are statistically insignificant in every era —
@@ -279,7 +294,7 @@
 </section>
 
 <section id="cycles">
-  <div class="secnum">06</div>
+  <div class="secnum">07</div>
   <h2>This bear vs the last two</h2>
   <div class="prose" id="cycle-prose"></div>
   <div class="chartbox">
@@ -293,7 +308,7 @@
 </section>
 
 <section id="survival">
-  <div class="secnum">07</div>
+  <div class="secnum">08</div>
   <h2>Survival indicators</h2>
   <div class="prose" id="survival-prose"></div>
   <div class="chartbox">
@@ -304,7 +319,7 @@
 </section>
 
 <section id="verdict">
-  <div class="secnum">08</div>
+  <div class="secnum">09</div>
   <h2>The verdict</h2>
   <div class="verdict">
     <div class="bear">
@@ -428,6 +443,64 @@ document.getElementById('survival-prose').innerHTML = `
   (Mayer multiple ${D.valuation.mayer_current}). Every prior touch of the 200WMA — 2015, 2018, 2020, 2022 —
   marked the bottom third of a cycle, though in 2018 and 2022 price overshot a further 15–25% below it
   before turning.</p>`;
+
+const N = D.nlp;
+document.getElementById('nlp-prose').innerHTML = `
+  <p>The Fear &amp; Greed index is built from <em>market</em> data (volatility, volume, dominance) — it never
+  reads a word of text. As an independent check, we scored <strong>${fmt(N.n_headlines_total)} Bitcoin news
+  headlines</strong> (2018–2026, Hacker News archive) with VADER, a lexicon-based NLP sentiment model extended
+  with finance vocabulary, and cross-referenced the two.</p>
+  <p><strong>The two sentiment measures agree</strong> (correlation ${N.corr_with_fear_greed} monthly) despite
+  sharing no inputs — good evidence both are measuring something real. And the NLP series confirms the mirror
+  finding from §4: press tone correlates ${N.corr_same_month_ret} with the <em>same</em> month's return but only
+  ${N.corr_next_month_ret} with the <em>next</em> month's. The news describes what price already did; it doesn't predict it.</p>
+  <p>Where we are now: <strong>${N.latest.month} press tone was ${N.latest.mean_compound}</strong> — the
+  <strong class="hl">${N.latest.percentile}th percentile</strong> of all months since 2018, i.e. among the most
+  negative coverage Bitcoin has ever received. ${N.latest.pct_negative}% of headlines scored negative vs
+  ${N.latest.pct_positive}% positive. Historically, the most-negative-press tercile was followed by
+  <strong class="pos">+${N.buckets[0].mean_next_ret}%</strong> the next month (62% hit rate) — like extreme fear,
+  maximum media pessimism has been a mild contrarian signal, not a sell signal.</p>`;
+document.getElementById('nlp-foot').textContent =
+  `Method: VADER compound score per headline, domain lexicon added (bullish/crash/liquidation/etc), ` +
+  `monthly mean over ${N.n_months} months with ≥10 relevant headlines. Source: hn.algolia.com archive. ` +
+  `Tone scale: -1 (most negative) to +1 (most positive). Terciles split the ${N.buckets[0].n * 3} months into thirds.`;
+
+new Chart(document.getElementById('nlpChart'), {
+  type: 'line',
+  data: {
+    labels: N.series.map(x => x.d),
+    datasets: [
+      { label: 'NLP news tone', data: N.series.map(x => x.tone), borderColor: INK, borderWidth: 1.3, pointRadius: 0, yAxisID: 'y', tension: 0.2 },
+      { label: 'Fear & Greed (market-based)', data: N.series.map(x => x.fg), borderColor: ACC, borderWidth: 1.2, borderDash: [4, 3], pointRadius: 0, yAxisID: 'y2', tension: 0.2 },
+    ],
+  },
+  options: {
+    maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { position: 'left', title: { display: true, text: 'tone' } },
+      y2: { position: 'right', min: 0, max: 100, grid: { display: false }, title: { display: true, text: 'F&G' } },
+      x: { ...noGrid, ticks: { maxTicksLimit: 10, callback: function(v) { return this.getLabelForValue(v).slice(0, 4); } } },
+    },
+  },
+});
+
+new Chart(document.getElementById('nlpBucketChart'), {
+  type: 'bar',
+  data: {
+    labels: N.buckets.map(b => b.bucket),
+    datasets: [{
+      data: N.buckets.map(b => b.mean_next_ret),
+      backgroundColor: N.buckets.map(b => b.mean_next_ret >= 0 ? '#2e7d4f' : '#c0392b'),
+      barPercentage: 0.45,
+    }],
+  },
+  options: {
+    maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: {
+      label: ctx => { const b = N.buckets[ctx.dataIndex]; return ` mean ${b.mean_next_ret}% · median ${b.median_next_ret}% · hit ${b.hit_rate_pos}% · n=${b.n}`; }
+    } } },
+    scales: { y: { ticks: { callback: v => v + '%' } }, x: noGrid },
+  },
+});
 
 document.getElementById('m2corr').textContent = D.m2.contemporaneous_corr;
 document.getElementById('m2best').textContent = `${D.m2.best_lag.corr} with a ${D.m2.best_lag.lag}-month lag`;

@@ -64,6 +64,15 @@ Forward 30-day return conditioned on the Fear & Greed level (2018–2026):
 
 Two honest observations: extreme fear (where we are now, at 11) has historically been a *mildly* positive contrarian entry — but the best historical bucket was actually extreme greed, i.e. momentum. The distribution is U-shaped, not simply contrarian. The worst zone is ordinary fear (20–40), which is where slow bleeds live.
 
+## 4b. NLP cross-reference: reading the news itself
+
+The Fear & Greed index is computed from market data (volatility, volume, dominance) and never reads text. As an independent check we scored **10,358 Bitcoin-related headlines** (Hacker News archive, 2018–2026) with VADER — a lexicon + rule-based NLP sentiment model — extended with a finance/crypto vocabulary (crash, liquidation, bullish, ETF outflows, etc.), aggregated monthly.
+
+- **The two sentiment measures agree without sharing inputs:** monthly correlation of NLP press tone with F&G is **0.38** — decent convergent validity for two entirely different methodologies.
+- **Text confirms the mirror finding:** press tone correlates **0.31** with the *same* month's BTC return but only **0.04** with the *next* month's. Journalists describe what price already did; coverage tone has essentially zero predictive power.
+- **Current reading is historically extreme:** June 2026 tone was **−0.088, the 7.8th percentile** of all 102 months — among the most negative Bitcoin coverage on record. 34% of headlines scored negative vs 9% positive.
+- **Contrarian tercile test:** months in the most-negative-press tercile were followed by **+7.1%** mean next-month returns (62% hit rate); neutral-press months were the worst (−2.2%). Same U-shape as the F&G quintiles: maximum pessimism in text has been a mild buy signal, not a sell signal.
+
 ## 5. Money supply
 
 The popular "BTC follows M2" thesis is weak in US data: YoY BTC returns vs YoY M2 growth correlate at just **0.17** contemporaneously, peaking at **0.24 with a 7-month lag**. Liquidity matters directionally (2020–21 vs 2022 is the cleanest evidence) but M2 alone explains very little variance and is not a usable timing tool.

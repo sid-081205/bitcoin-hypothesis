@@ -247,6 +247,68 @@ def event_study(btc):
     return rows
 
 
+def nlp_sentiment_analysis(d):
+    """Cross-reference the text-derived (VADER on HN headlines) sentiment index
+    with the market-derived Fear & Greed index and with BTC returns."""
+    nlp = pd.read_csv(DATA / "nlp_sentiment_monthly.csv")
+    nlp["date"] = pd.to_datetime(nlp["date"])
+    nlp = nlp[nlp["n_headlines"] >= 10].set_index("date")  # drop thin/incomplete months
+
+    btc_m = d["btc"].resample("MS").last()
+    fg_m = d["fear_greed"].resample("MS").mean()
+    df = pd.concat([nlp, btc_m.rename("btc"), fg_m.rename("fg")], axis=1, sort=True)
+    df["btc_ret"] = df["btc"].pct_change() * 100
+    df["btc_ret_next"] = df["btc_ret"].shift(-1)
+    df = df[df["mean_compound"].notna()]
+
+    both = df.dropna(subset=["mean_compound", "fg"])
+    corr_fg = float(both["mean_compound"].corr(both["fg"]))
+    corr_same = float(df["mean_compound"].corr(df["btc_ret"]))
+    valid_next = df.dropna(subset=["btc_ret_next"])
+    corr_next = float(valid_next["mean_compound"].corr(valid_next["btc_ret_next"]))
+
+    # predictive test: next-month BTC return by NLP-sentiment tercile
+    terc = pd.qcut(valid_next["mean_compound"], 3, labels=["Negative press", "Neutral press", "Positive press"])
+    buckets = []
+    for label, g in valid_next.groupby(terc, observed=True):
+        buckets.append(
+            {
+                "bucket": str(label),
+                "mean_next_ret": round(float(g["btc_ret_next"].mean()), 1),
+                "median_next_ret": round(float(g["btc_ret_next"].median()), 1),
+                "hit_rate_pos": round(float((g["btc_ret_next"] > 0).mean()) * 100, 1),
+                "n": int(len(g)),
+            }
+        )
+
+    hist = df["mean_compound"]
+    latest = hist.iloc[-1]
+    return {
+        "corr_with_fear_greed": round(corr_fg, 3),
+        "corr_same_month_ret": round(corr_same, 3),
+        "corr_next_month_ret": round(corr_next, 3),
+        "buckets": buckets,
+        "n_headlines_total": int(nlp["n_headlines"].sum()),
+        "n_months": int(len(nlp)),
+        "latest": {
+            "month": hist.index[-1].strftime("%Y-%m"),
+            "mean_compound": round(float(latest), 3),
+            "percentile": round(float((hist < latest).mean()) * 100, 1),
+            "pct_negative": float(df["pct_negative"].iloc[-1]),
+            "pct_positive": float(df["pct_positive"].iloc[-1]),
+        },
+        "series": [
+            {
+                "d": i.strftime("%Y-%m"),
+                "tone": round(float(r["mean_compound"]), 3),
+                "fg": (round(float(r["fg"]), 0) if pd.notna(r["fg"]) else None),
+                "n": int(r["n_headlines"]),
+            }
+            for i, r in df.iterrows()
+        ],
+    }
+
+
 def price_and_valuation(btc, d):
     wma200 = btc.rolling(1400).mean()  # 200 weeks = 1400 days
     mayer = btc / btc.rolling(200).mean()
@@ -308,6 +370,7 @@ def main():
         ],
         "rolling_corr": rolling_correlations(daily),
         "sentiment": sentiment_analysis(daily),
+        "nlp": nlp_sentiment_analysis(d),
         "rate_sensitivity": rate_sensitivity(daily),
         "m2": m2_analysis(d),
         "cycles": cycle_drawdowns(btc),

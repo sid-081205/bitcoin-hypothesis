@@ -4,3 +4,4 @@ statsmodels>=0.14
 yfinance>=0.2.50
 requests>=2.31
 scipy>=1.12
+vaderSentiment>=3.3
