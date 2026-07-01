@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bitcoin Hypothesis — a data-driven investment analysis</title>
+<meta name="description" content="Regressions, event studies and cycle analysis on real market data: what actually drives Bitcoin's price, and is it worth buying now?">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="data.js"></script>
+<style>
+  :root {
+    --ink: #16161a;
+    --ink-soft: #55555e;
+    --ink-faint: #9a9aa3;
+    --paper: #fbfaf7;
+    --line: #e3e1da;
+    --accent: #e8642c;
+    --accent-soft: #f4c9b3;
+    --green: #2e7d4f;
+    --red: #c0392b;
+    --mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
+    --serif: "Charter", "Georgia", serif;
+    --sans: -apple-system, "Helvetica Neue", "Inter", sans-serif;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 980px; margin: 0 auto; padding: 0 28px; }
+
+  header { padding: 72px 0 40px; border-bottom: 1px solid var(--ink); }
+  .kicker {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em;
+    text-transform: uppercase; color: var(--accent); margin-bottom: 18px;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 500; font-size: clamp(34px, 5.5vw, 56px);
+    line-height: 1.08; letter-spacing: -0.015em; max-width: 20ch;
+  }
+  .sub { margin-top: 20px; color: var(--ink-soft); max-width: 62ch; font-size: 17px; }
+  .asof { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); margin-top: 26px; }
+
+  .statgrid {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    border-bottom: 1px solid var(--line);
+  }
+  .stat { padding: 22px 16px 20px; border-right: 1px solid var(--line); }
+  .stat:nth-child(4n) { border-right: none; }
+  .stat .k {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .stat .v { font-family: var(--mono); font-size: 24px; margin-top: 6px; letter-spacing: -0.02em; }
+  .stat .v small { font-size: 13px; color: var(--ink-faint); }
+  .neg { color: var(--red); } .pos { color: var(--green); }
+
+  section { padding: 64px 0 8px; }
+  .secnum {
+    font-family: var(--mono); font-size: 11px; color: var(--accent);
+    letter-spacing: 0.2em; margin-bottom: 10px;
+  }
+  h2 {
+    font-family: var(--serif); font-weight: 500; font-size: clamp(24px, 3.4vw, 34px);
+    letter-spacing: -0.01em; line-height: 1.15; max-width: 26ch; margin-bottom: 18px;
+  }
+  .prose { max-width: 68ch; color: var(--ink-soft); }
+  .prose p { margin-bottom: 14px; }
+  .prose strong { color: var(--ink); font-weight: 600; }
+  .prose .hl { color: var(--accent); font-weight: 600; }
+
+  .chartbox { margin: 34px 0 10px; border: 1px solid var(--line); background: #fff; padding: 22px 18px 12px; }
+  .chartbox .cap {
+    font-family: var(--mono); font-size: 11px; color: var(--ink-faint);
+    letter-spacing: 0.08em; margin-bottom: 14px; text-transform: uppercase;
+  }
+  .chartwrap { position: relative; height: 340px; }
+  .chartwrap.short { height: 260px; }
+  .footnote { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 10px; line-height: 1.6; }
+
+  table { width: 100%; border-collapse: collapse; margin: 30px 0 12px; font-size: 14px; }
+  th {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase;
+    color: var(--ink-faint); font-weight: 500; text-align: left;
+    padding: 10px 12px 10px 0; border-bottom: 1px solid var(--ink);
+  }
+  td { padding: 11px 12px 11px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-size: 13px; }
+  .sig { font-weight: 700; }
+  .badge {
+    display: inline-block; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+    padding: 2px 8px; border: 1px solid var(--line); border-radius: 20px;
+    color: var(--ink-soft); text-transform: uppercase;
+  }
+
+  .timeline { margin-top: 34px; border-left: 1px solid var(--ink); }
+  .tl-item { padding: 0 0 34px 28px; position: relative; }
+  .tl-item::before {
+    content: ""; position: absolute; left: -4.5px; top: 8px;
+    width: 8px; height: 8px; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 50%;
+  }
+  .tl-item.hot::before { background: var(--accent); border-color: var(--accent); }
+  .tl-era { font-family: var(--mono); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent); }
+  .tl-item h3 { font-family: var(--serif); font-weight: 500; font-size: 20px; margin: 6px 0 8px; }
+  .tl-item p { color: var(--ink-soft); font-size: 15px; max-width: 64ch; }
+
+  .verdict { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid var(--ink); margin-top: 34px; }
+  .verdict > div { padding: 30px 28px; }
+  .verdict > div:first-child { border-right: 1px solid var(--ink); }
+  .verdict h3 { font-family: var(--mono); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 16px; }
+  .verdict ul { list-style: none; }
+  .verdict li { font-size: 14.5px; color: var(--ink-soft); padding: 8px 0 8px 20px; border-bottom: 1px solid var(--line); position: relative; }
+  .verdict li:last-child { border-bottom: none; }
+  .verdict li::before { content: "—"; position: absolute; left: 0; color: var(--ink-faint); }
+  .bear h3 { color: var(--red); } .bull h3 { color: var(--green); }
+
+  .synthesis {
+    margin: 44px 0 10px; padding: 34px 36px; background: var(--ink); color: #efeee9;
+  }
+  .synthesis .k { font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
+  .synthesis p { font-family: var(--serif); font-size: 18.5px; line-height: 1.6; max-width: 66ch; }
+  .synthesis p + p { margin-top: 14px; }
+
+  footer { margin-top: 80px; padding: 34px 0 60px; border-top: 1px solid var(--ink); }
+  footer p { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); line-height: 1.9; max-width: 80ch; }
+  footer a { color: var(--ink-soft); }
+
+  @media (max-width: 720px) {
+    .statgrid { grid-template-columns: repeat(2, 1fr); }
+    .stat:nth-child(2n) { border-right: none; }
+    .stat { border-bottom: 1px solid var(--line); }
+    .verdict { grid-template-columns: 1fr; }
+    .verdict > div:first-child { border-right: none; border-bottom: 1px solid var(--ink); }
+    .chartwrap { height: 260px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="kicker">Bitcoin Hypothesis / Empirical Research</div>
+    <h1>What actually moves Bitcoin — and is it worth buying while it falls?</h1>
+    <p class="sub">Multi-factor regressions, event studies, sentiment conditioning and cycle
+    analysis on twelve years of real market data. No narratives without numbers.</p>
+    <p class="asof" id="asof"></p>
+  </div>
+</header>
+
+<div class="wrap"><div class="statgrid" id="stats"></div></div>
+
+<main class="wrap">
+
+<section id="price">
+  <div class="secnum">01</div>
+  <h2>The state of the market</h2>
+  <div class="prose" id="state-prose"></div>
+  <div class="chartbox">
+    <div class="cap">BTC/USD, log scale, weekly · 200-week moving average · key events</div>
+    <div class="chartwrap"><canvas id="priceChart"></canvas></div>
+  </div>
+  <p class="footnote">Source: Yahoo Finance daily closes since 2014, resampled weekly. Event markers from the event study in §5.</p>
+</section>
+
+<section id="history">
+  <div class="secnum">02</div>
+  <h2>Fundamental history: five regimes, one asset</h2>
+  <div class="prose"><p>Bitcoin's price has been driven by a different marginal buyer in every era.
+  Understanding the current fall requires knowing which regime broke.</p></div>
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-era">2014–2016</div><h3>Post-Mt.Gox winter</h3>
+      <p>Retail-only market recovering from exchange failure. Near-zero correlation with any macro
+      variable — our regressions confirm no NASDAQ beta and no rate sensitivity in this era.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-era">2017–2018</div><h3>The ICO bubble</h3>
+      <p>Retail speculation drove BTC from ~$1k to $19.7k, then −84%. China's exchange ban cost 9% in a week;
+      the actual top came months later from leverage exhaustion, not regulation.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-era">2020–2021</div><h3>The liquidity cycle</h3>
+      <p>Zero rates, QE and the first institutional wave took BTC to $69k — and permanently
+      converted it into a macro asset. Rolling correlation with NASDAQ jumped from ~0 to 0.4+ and never went back.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-era">2022</div><h3>Tightening plus structural collapse</h3>
+      <p>The fastest hiking cycle in 40 years repriced all risk, then crypto-native leverage imploded:
+      Terra (−12% in 7 days), FTX (−18% in 7 days), −77% peak to trough. Structural failures hurt far more
+      than any government ever has.</p>
+    </div>
+    <div class="tl-item">
+      <div class="tl-era">2023–2025</div><h3>The ETF era</h3>
+      <p>SVB's failure was Bitcoin's best 30-day event window ever measured here (+39%). Spot ETF approval
+      rerouted institutional flow; the halving, a pro-crypto US election (+42% in 30 days) and record
+      inflows carried price to $126k by October 2025.</p>
+    </div>
+    <div class="tl-item hot">
+      <div class="tl-era">October 2025 → now</div><h3>The current fall: trigger, flows, macro</h3>
+      <p><strong>Trigger:</strong> the 10 Oct 2025 tariff shock hit record leverage — ~$19B liquidated in a day,
+      order-book depth collapsed and never recovered. <strong>Flows:</strong> spot ETFs flipped to record
+      outflows (~$3.3B out in H1 2026; a record 13-day streak in June) and Strategy's disclosed BTC sale broke
+      treasury-company confidence. <strong>Macro:</strong> hawkish Fed repricing, a strong dollar, and rotation
+      into AI equities. Two consecutive losing quarters to open the year — previously seen only in 2018 and 2022.</p>
+    </div>
+  </div>
+</section>
+
+<section id="regressions">
+  <div class="secnum">03</div>
+  <h2>The factor regressions</h2>
+  <div class="prose">
+    <p>Weekly BTC log returns regressed on NASDAQ, gold and dollar-index returns, the change in the
+    10-year yield, and the change in the Fear &amp; Greed index (OLS, Newey-West errors). Three windows:
+    full sample, pre-ETF, and the ETF era.</p>
+    <p><strong>The result is unambiguous:</strong> Bitcoin trades as a <span class="hl">high-beta tech-risk asset</span>.
+    NASDAQ beta ≈ 0.5 is the only macro factor consistently significant, and it <em>rose</em> after the ETFs
+    arrived — institutionalization made Bitcoin more macro, not less (R² 0.34 → 0.42). The "digital gold" beta
+    is statistically zero and turned negative in the ETF era.</p>
+  </div>
+  <div id="regTables"></div>
+  <p class="footnote">Bold = significant at 5%. F&amp;G change scaled to [0,1]. HAC standard errors, 4 lags. Sample limited by F&amp;G availability (Feb 2018).</p>
+  <div class="chartbox">
+    <div class="cap">Rolling 90-day correlation of daily BTC returns</div>
+    <div class="chartwrap"><canvas id="corrChart"></canvas></div>
+  </div>
+  <p class="footnote">The structural break is visible: pre-2020 Bitcoin was uncorrelated with everything. Since 2020 the NASDAQ correlation has been persistently positive, spiking toward 0.6–0.8 in every stress window — including the current one.</p>
+</section>
+
+<section id="sentiment">
+  <div class="secnum">04</div>
+  <h2>Is it bad sentiment? Sentiment is the mirror, not the engine</h2>
+  <div class="prose" id="sent-prose"></div>
+  <div class="chartbox">
+    <div class="cap">Mean forward 30-day BTC return by Fear &amp; Greed bucket, 2018–2026</div>
+    <div class="chartwrap short"><canvas id="quintileChart"></canvas></div>
+  </div>
+  <div class="chartbox">
+    <div class="cap">Lead–lag: corr( BTC return today , ΔF&amp;G at t+lag )</div>
+    <div class="chartwrap short"><canvas id="leadlagChart"></canvas></div>
+  </div>
+  <p class="footnote">The spike at lag −1 (0.57) vs ~0 at lag +1 means price moves first and sentiment records it the next day. Sentiment does not cause the fall; it measures it. Source: alternative.me F&amp;G, 3,069 daily observations.</p>
+</section>
+
+<section id="rates">
+  <div class="secnum">05</div>
+  <h2>Interest rates, money supply, and governments</h2>
+  <div class="prose">
+    <p><strong>Rates:</strong> daily and weekly yield-change betas are statistically insignificant in every era —
+    Bitcoin does not trade tick-for-tick with treasuries. But the two worst years in its institutional life
+    (2022, 2026) are both <span class="hl">hawkish-repricing years</span>: rates act through regime and risk
+    appetite, not through daily co-movement. That distinction matters — it means no rate <em>level</em> kills
+    Bitcoin, but a hawkish <em>surprise cycle</em> has always coincided with its bear markets since 2020.</p>
+    <p><strong>Money supply:</strong> the popular "BTC follows M2" chart is weak in the data — YoY correlation of
+    just <span id="m2corr"></span> contemporaneously, peaking at <span id="m2best"></span>. Liquidity matters
+    directionally; M2 is not a timing tool.</p>
+    <p><strong>Governments:</strong> measured event by event, hostile state action has never been fatal —
+    and the market's response has decayed with each repetition.</p>
+  </div>
+  <div id="rateTable"></div>
+  <div class="chartbox">
+    <div class="cap">BTC year-over-year return vs US M2 year-over-year growth</div>
+    <div class="chartwrap short"><canvas id="m2Chart"></canvas></div>
+  </div>
+  <table id="eventTable"></table>
+  <p class="footnote">Event returns measured from the last close before the event. Note the pattern: China's third ban (+35.7% in 30d) was ignored entirely, while the two largest positive windows are US policy events — the 2024–25 rally was unusually policy-dependent, which makes stalled US legislation a real current drag.</p>
+</section>
+
+<section id="cycles">
+  <div class="secnum">06</div>
+  <h2>This bear vs the last two</h2>
+  <div class="prose" id="cycle-prose"></div>
+  <div class="chartbox">
+    <div class="cap">Price indexed to 100 at each cycle top — 2018 vs 2022 vs now</div>
+    <div class="chartwrap"><canvas id="cycleChart"></canvas></div>
+  </div>
+  <div class="chartbox">
+    <div class="cap">Drawdown from all-time high, 2014–2026</div>
+    <div class="chartwrap short"><canvas id="ddChart"></canvas></div>
+  </div>
+</section>
+
+<section id="survival">
+  <div class="secnum">07</div>
+  <h2>Survival indicators</h2>
+  <div class="prose" id="survival-prose"></div>
+  <div class="chartbox">
+    <div class="cap">Network hash rate, EH/s (security budget)</div>
+    <div class="chartwrap short"><canvas id="hashChart"></canvas></div>
+  </div>
+  <p class="footnote">Source: blockchain.info. Hash rate lags price economics but its resilience through a −52% drawdown indicates no network-level or miner-capitulation crisis yet.</p>
+</section>
+
+<section id="verdict">
+  <div class="secnum">08</div>
+  <h2>The verdict</h2>
+  <div class="verdict">
+    <div class="bear">
+      <h3>The bear case — all empirically live</h3>
+      <ul>
+        <li>The marginal buyer (spot ETFs) is now a structural seller — record outflow streaks through June 2026</li>
+        <li>Hawkish Fed repricing underway; BTC has never bottomed during one</li>
+        <li>NASDAQ beta ~0.5 and rising: no diversification when you need it</li>
+        <li>Two losing quarters to open the year — only 2018 and 2022 match, both full bears</li>
+        <li>Order-book depth never recovered from Oct 10; thin markets fall faster</li>
+        <li>Prediction markets price ~52% odds of sub-$50k in 2026</li>
+      </ul>
+    </div>
+    <div class="bull">
+      <h3>The bull case — equally empirical</h3>
+      <ul>
+        <li>Price at the 200-week moving average — the best accumulation zone in all four prior cycles</li>
+        <li>Fear &amp; Greed at 11: the extreme-fear bucket averages +5.0% fwd 30d with a 63% hit rate</li>
+        <li>Hash rate at 78% of ATH: the security budget and miner base are intact</li>
+        <li>Selling is flow-driven (ETF redemptions, treasury unwinds), not a protocol or credibility failure — historically the recoverable kind</li>
+        <li>Every prior ≥50% drawdown resolved to new highs — sample of four</li>
+        <li>Mayer multiple 0.80: bottom decile of its historical distribution</li>
+      </ul>
+    </div>
+  </div>
+  <div class="synthesis">
+    <div class="k">Synthesis</div>
+    <p>Statistically, Bitcoin's price is ~40–50% explained by two observables: tech-equity risk appetite
+    and its own reflexive sentiment. Neither has turned. Valuation says risk/reward for a multi-year
+    holder is better than at any point since late 2022 — but both prior analogs bottomed only after the
+    macro cycle turned: the 2019 Fed pivot, the 2022 peak-inflation moment.</p>
+    <p>The data supports treating this as a staged-accumulation zone for multi-year capital that can
+    tolerate a further −20–30% leg — not a momentum entry. The single most informative catalyst to watch
+    is ETF flows turning positive, because the entire 2024–25 repricing was built on them.</p>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>BITCOIN HYPOTHESIS · All statistics computed from raw data by <a href="https://github.com/sid-081205/bitcoin-hypothesis">scripts in this repository</a>.
+    Sources: Yahoo Finance (BTC-USD, ^IXIC, GC=F, DX-Y.NYB, ^GSPC) · FRED (DFF, DGS10, M2SL, CPIAUCSL) ·
+    alternative.me (Fear &amp; Greed) · blockchain.info (hash rate, addresses).
+    Regressions: OLS with Newey-West HAC errors, weekly frequency.
+    This is research, not financial advice. Past performance does not predict future results.</p>
+  </div>
+</footer>
+
+<script>
+const D = window.DATA;
+const S = D.snapshot;
+const mono = getComputedStyle(document.documentElement).getPropertyValue('--mono');
+Chart.defaults.font.family = mono;
+Chart.defaults.font.size = 10.5;
+Chart.defaults.color = '#9a9aa3';
+Chart.defaults.borderColor = '#eceae4';
+Chart.defaults.plugins.legend.labels.boxWidth = 10;
+Chart.defaults.plugins.legend.labels.boxHeight = 10;
+Chart.defaults.animation = false;
+
+const fmt = (x) => x.toLocaleString('en-US');
+const sgn = (x) => (x > 0 ? '+' : '') + x + '%';
+const cls = (x) => x >= 0 ? 'pos' : 'neg';
+
+document.getElementById('asof').textContent =
+  `DATA THROUGH ${S.as_of} · GENERATED ${D.generated} · ALL FIGURES COMPUTED FROM RAW SOURCE DATA`;
+
+document.getElementById('stats').innerHTML = [
+  ['BTC / USD', `$${fmt(S.price)}`, ''],
+  ['From ATH ($' + fmt(S.ath) + ')', sgn(S.from_ath_pct), cls(S.from_ath_pct)],
+  ['30-day return', sgn(S.ret_30d), cls(S.ret_30d)],
+  ['1-year return', sgn(S.ret_365d), cls(S.ret_365d)],
+  ['Fed funds rate', S.fed_funds + '%', ''],
+  ['10Y treasury', S.treasury_10y + '%', ''],
+  ['Dollar index', S.dxy, ''],
+  ['Fear & Greed', D.sentiment.current + ' <small>/ 100 · extreme fear</small>', 'neg'],
+].map(([k, v, c]) => `<div class="stat"><div class="k">${k}</div><div class="v ${c}">${v}</div></div>`).join('');
+
+document.getElementById('state-prose').innerHTML = `
+  <p>Bitcoin trades at <strong>$${fmt(S.price)}</strong>, <strong class="neg">${S.from_ath_pct}%</strong> below the
+  all-time high of $${fmt(S.ath)} set on ${S.ath_date}. June 2026 was its worst month since June 2022 — a rare
+  full-month, wick-less decline. Realized volatility is just ${S.vol_90d_ann}% annualized: this is a
+  <strong>grind, not a panic</strong>, which historically distinguishes structural bears from flash corrections.</p>
+  <p>The market backdrop: fed funds at ${S.fed_funds}%, the 10-year at ${S.treasury_10y}%, futures pricing has
+  flipped toward rate <em>hikes</em>, the dollar is near one-year highs, and capital is rotating into AI equities.</p>`;
+
+document.getElementById('sent-prose').innerHTML = `
+  <p>The Fear &amp; Greed index sits at <strong>${D.sentiment.current}</strong> — deep extreme fear. Two findings:</p>
+  <p><strong>1. Sentiment follows price, it doesn't lead it.</strong> Today's BTC return correlates
+  <strong>0.57</strong> with <em>tomorrow's</em> sentiment change, and only 0.01 the other way around.
+  "Bad sentiment" is not what's driving the fall — it is the fall, recorded daily.</p>
+  <p><strong>2. As a signal, the distribution is U-shaped, not simply contrarian.</strong> Extreme fear
+  (where we are) has averaged <strong class="pos">+5.0%</strong> forward 30-day returns with a 62.9% hit rate —
+  a mildly positive contrarian entry. But the best bucket historically was extreme greed (momentum), and the
+  worst is ordinary fear (20–40), where slow bleeds live.</p>`;
+
+document.getElementById('cycle-prose').innerHTML = `
+  <p>Aligned from each cycle's all-time high, the current path — day ~266, at ${D.cycles.current_drawdown}% —
+  is tracking <strong>between the 2018 and 2022 trajectories</strong>: deeper than any mid-cycle correction,
+  shallower (so far) than the prior full bears, which bottomed at −84% and −77%.</p>
+  <p>Both prior analogs share today's signature — two consecutive losing quarters to open a year — and both
+  bottomed only when the macro cycle turned, roughly 12–13 months after the top. That template, for what a
+  sample of two is worth, points to late 2026.</p>`;
+
+document.getElementById('survival-prose').innerHTML = `
+  <p>Survival, as distinct from price: the network's <strong>hash rate stands at
+  ${Math.round(D.valuation.hash_rate_ath_ratio * 100)}% of its all-time high</strong> through a −52% drawdown —
+  miners have not capitulated and the security budget is intact. Price sits
+  <strong>${D.valuation.price_vs_200wma}%</strong> relative to the 200-week moving average
+  (Mayer multiple ${D.valuation.mayer_current}). Every prior touch of the 200WMA — 2015, 2018, 2020, 2022 —
+  marked the bottom third of a cycle, though in 2018 and 2022 price overshot a further 15–25% below it
+  before turning.</p>`;
+
+document.getElementById('m2corr').textContent = D.m2.contemporaneous_corr;
+document.getElementById('m2best').textContent = `${D.m2.best_lag.corr} with a ${D.m2.best_lag.lag}-month lag`;
+
+// ---- regression tables
+const varNames = {
+  const: 'Intercept', nasdaq_ret: 'NASDAQ return', gold_ret: 'Gold return',
+  dxy_ret: 'Dollar index return', d_10y: 'Δ 10Y yield', d_fear_greed: 'Δ Fear&Greed',
+};
+document.getElementById('regTables').innerHTML = `
+<table>
+  <tr><th>Factor</th>${D.regressions.map(r => `<th class="num">${r.label.split('(')[0].trim()}<br><span style="text-transform:none;letter-spacing:0">n=${r.n} · R²=${r.r2}</span></th>`).join('')}</tr>
+  ${D.regressions[0].coefs.map((_, i) => {
+    const name = D.regressions[0].coefs[i].var;
+    return `<tr><td>${varNames[name] || name}</td>${D.regressions.map(r => {
+      const c = r.coefs[i];
+      const s = c.p < 0.05 ? 'sig' : '';
+      return `<td class="num ${s}">${c.coef}<br><span style="color:#9a9aa3">t=${c.t}</span></td>`;
+    }).join('')}</tr>`;
+  }).join('')}
+</table>`;
+
+// ---- rate sensitivity table
+document.getElementById('rateTable').innerHTML = `
+<table>
+  <tr><th>Era</th><th class="num">β per +10bp (10Y)</th><th class="num">t-stat</th><th class="num">Avg BTC return, yield-spike days (≥+5bp)</th></tr>
+  ${D.rate_sensitivity.map(r => `<tr><td>${r.era}</td><td class="num">${r.beta_per_10bp}%</td>
+   <td class="num">${r.t}</td><td class="num">${r.avg_ret_yield_spike}% <span style="color:#9a9aa3">(n=${r.n_spike_days})</span></td></tr>`).join('')}
+</table>`;
+
+// ---- events table
+const evT = document.getElementById('eventTable');
+evT.innerHTML = `
+  <tr><th>Date</th><th>Event</th><th></th><th class="num">7-day</th><th class="num">30-day</th></tr>
+  ${D.events.map(e => `<tr><td class="num">${e.date}</td><td>${e.label}</td>
+   <td><span class="badge">${e.type}</span></td>
+   <td class="num ${e.ret_7d >= 0 ? 'pos' : 'neg'}">${sgn(e.ret_7d)}</td>
+   <td class="num ${e.ret_30d >= 0 ? 'pos' : 'neg'}">${sgn(e.ret_30d)}</td></tr>`).join('')}`;
+
+// ---- charts
+const INK = '#16161a', ACC = '#e8642c', FAINT = '#c9c7c0';
+const noGrid = { grid: { display: false } };
+
+new Chart(document.getElementById('priceChart'), {
+  type: 'line',
+  data: {
+    labels: D.valuation.price_series.map(x => x.d),
+    datasets: [
+      { label: 'BTC/USD', data: D.valuation.price_series.map(x => x.p), borderColor: INK, borderWidth: 1.4, pointRadius: 0 },
+      { label: '200-week MA', data: D.valuation.price_series.map(x => x.wma), borderColor: ACC, borderWidth: 1.2, borderDash: [5, 4], pointRadius: 0 },
+    ],
+  },
+  options: {
+    maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { type: 'logarithmic', ticks: { callback: v => [500, 1000, 5000, 10000, 50000, 100000].includes(v) ? '$' + fmt(v) : null } },
+      x: { ...noGrid, ticks: { maxTicksLimit: 10, callback: function(v) { return this.getLabelForValue(v).slice(0, 4); }, autoSkip: true } },
+    },
+  },
+});
+
+const corrColors = { nasdaq: INK, gold: '#b98a2e', dxy: '#4a6f8f', d_10y: ACC };
+const corrLabels = { nasdaq: 'NASDAQ', gold: 'Gold', dxy: 'Dollar index', d_10y: 'Δ10Y yield' };
+new Chart(document.getElementById('corrChart'), {
+  type: 'line',
+  data: {
+    labels: D.rolling_corr.nasdaq.map(x => x.d),
+    datasets: Object.keys(corrColors).map(k => ({
+      label: corrLabels[k],
+      data: D.rolling_corr.nasdaq.map(pt => {
+        const hit = D.rolling_corr[k].find(z => z.d === pt.d);
+        return hit ? hit.v : null;
+      }),
+      borderColor: corrColors[k], borderWidth: 1.1, pointRadius: 0, spanGaps: true,
+    })),
+  },
+  options: {
+    maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { min: -1, max: 1, ticks: { stepSize: 0.5 } },
+      x: { ...noGrid, ticks: { maxTicksLimit: 10, callback: function(v) { return this.getLabelForValue(v).slice(0, 4); } } },
+    },
+  },
+});
+
+new Chart(document.getElementById('quintileChart'), {
+  type: 'bar',
+  data: {
+    labels: D.sentiment.quintiles.map(q => q.bucket.replace(/ \(/, '\n(')),
+    datasets: [{
+      data: D.sentiment.quintiles.map(q => q.mean_fwd30),
+      backgroundColor: D.sentiment.quintiles.map(q => q.mean_fwd30 >= 0 ? '#2e7d4f' : '#c0392b'),
+      barPercentage: 0.55,
+    }],
+  },
+  options: {
+    maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: {
+      label: ctx => { const q = D.sentiment.quintiles[ctx.dataIndex]; return ` mean ${q.mean_fwd30}% · median ${q.median_fwd30}% · hit ${q.hit_rate_pos}% · n=${q.n}`; }
+    } } },
+    scales: { y: { ticks: { callback: v => v + '%' } }, x: noGrid },
+  },
+});
+
+new Chart(document.getElementById('leadlagChart'), {
+  type: 'bar',
+  data: {
+    labels: D.sentiment.lead_lag.map(x => x.lag),
+    datasets: [{ data: D.sentiment.lead_lag.map(x => x.corr),
+      backgroundColor: D.sentiment.lead_lag.map(x => x.lag === -1 ? ACC : FAINT), barPercentage: 0.6 }],
+  },
+  options: {
+    maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: { y: { max: 0.6 }, x: { ...noGrid, title: { display: true, text: 'lag (days) — negative = sentiment reacts after price' } } },
+  },
+});
+
+new Chart(document.getElementById('m2Chart'), {
+  type: 'line',
+  data: {
+    labels: D.m2.series.map(x => x.d),
+    datasets: [
+      { label: 'BTC YoY %', data: D.m2.series.map(x => x.btc_yoy), borderColor: INK, borderWidth: 1.2, pointRadius: 0, yAxisID: 'y' },
+      { label: 'M2 YoY %', data: D.m2.series.map(x => x.m2_yoy), borderColor: ACC, borderWidth: 1.2, pointRadius: 0, yAxisID: 'y2' },
+    ],
+  },
+  options: {
+    maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    scales: {
+      y: { position: 'left', ticks: { callback: v => v + '%' } },
+      y2: { position: 'right', grid: { display: false }, ticks: { callback: v => v + '%' } },
+      x: { ...noGrid, ticks: { maxTicksLimit: 10, callback: function(v) { return this.getLabelForValue(v).slice(0, 4); } } },
+    },
+  },
+});
+
+const cyc = D.cycles.aligned;
+const cycStyles = { '2018 bear': ['#b98a2e', [4, 3]], '2022 bear': ['#4a6f8f', [4, 3]], '2026 bear (current)': [ACC, []] };
+new Chart(document.getElementById('cycleChart'), {
+  type: 'line',
+  data: {
+    datasets: Object.entries(cyc).map(([label, pts]) => ({
+      label, data: pts.map(p => ({ x: p.day, y: p.v })),
+      borderColor: cycStyles[label][0], borderDash: cycStyles[label][1],
+      borderWidth: label.includes('current') ? 2 : 1.2, pointRadius: 0,
+    })),
+  },
+  options: {
+    maintainAspectRatio: false, parsing: false, interaction: { mode: 'nearest', intersect: false },
+    scales: {
+      x: { type: 'linear', min: 0, max: 730, title: { display: true, text: 'days since cycle all-time high' }, ...noGrid },
+      y: { ticks: { callback: v => v } , title: { display: true, text: 'price (top = 100)' } },
+    },
+  },
+});
+
+new Chart(document.getElementById('ddChart'), {
+  type: 'line',
+  data: {
+    labels: D.cycles.drawdown_series.map(x => x.d),
+    datasets: [{ data: D.cycles.drawdown_series.map(x => x.v), borderColor: '#c0392b',
+      backgroundColor: 'rgba(192,57,43,0.07)', fill: true, borderWidth: 1.1, pointRadius: 0 }],
+  },
+  options: {
+    maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: {
+      y: { max: 0, ticks: { callback: v => v + '%' } },
+      x: { ...noGrid, ticks: { maxTicksLimit: 12, callback: function(v) { return this.getLabelForValue(v).slice(0, 4); } } },
+    },
+  },
+});
+
+new Chart(document.getElementById('hashChart'), {
+  type: 'line',
+  data: {
+    labels: D.valuation.hash_rate.map(x => x.d),
+    datasets: [{ data: D.valuation.hash_rate.map(x => x.v), borderColor: INK,
+      backgroundColor: 'rgba(22,22,26,0.05)', fill: true, borderWidth: 1.1, pointRadius: 0 }],
+  },
+  options: {
+    maintainAspectRatio: false, plugins: { legend: { display: false } },
+    scales: {
+      y: { ticks: { callback: v => fmt(v) } },
+      x: { ...noGrid, ticks: { maxTicksLimit: 12, callback: function(v) { return this.getLabelForValue(v).slice(0, 4); } } },
+    },
+  },
+});
+</script>
+</body>
+</html>
