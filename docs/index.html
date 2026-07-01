@@ -394,6 +394,8 @@ Chart.defaults.animation = false;
 const fmt = (x) => x.toLocaleString('en-US');
 const sgn = (x) => (x > 0 ? '+' : '') + x + '%';
 const cls = (x) => x >= 0 ? 'pos' : 'neg';
+const INK = '#16161a', ACC = '#e8642c', FAINT = '#c9c7c0';
+const noGrid = { grid: { display: false } };
 
 document.getElementById('asof').textContent =
   `DATA THROUGH ${S.as_of} · GENERATED ${D.generated} · ALL FIGURES COMPUTED FROM RAW SOURCE DATA`;
@@ -541,9 +543,6 @@ evT.innerHTML = `
    <td class="num ${e.ret_30d >= 0 ? 'pos' : 'neg'}">${sgn(e.ret_30d)}</td></tr>`).join('')}`;
 
 // ---- charts
-const INK = '#16161a', ACC = '#e8642c', FAINT = '#c9c7c0';
-const noGrid = { grid: { display: false } };
-
 new Chart(document.getElementById('priceChart'), {
   type: 'line',
   data: {
