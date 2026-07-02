@@ -1,0 +1,30 @@
+{
+  "updated": "2026-07-02",
+  "price_at_analysis": 60357,
+  "stance": "STAGED ACCUMULATION",
+  "stance_color": "amber",
+  "one_liner": "Good price, probably not the bottom. Start small (25-33% of intended allocation), keep the rest for when a trigger fires. 3+ year money only.",
+  "signals": [
+    { "name": "Price vs 200-week average", "state": "green", "note": "-3.4% — the historical accumulation zone in all four prior cycles" },
+    { "name": "Fear & Greed", "state": "green", "note": "11/100, extreme fear — bucket has averaged +5.0% fwd 30d (63% hit rate)" },
+    { "name": "NLP press tone", "state": "green", "note": "7.8th percentile — most negative coverage on record; contrarian-positive historically" },
+    { "name": "ETF flows", "state": "red", "note": "Record outflow streaks through June 2026 — the marginal buyer is still a seller" },
+    { "name": "Fed direction", "state": "red", "note": "Hawkish repricing (hike odds 23% to 64% in a month) — BTC has never bottomed during one" },
+    { "name": "Network health", "state": "green", "note": "Hash rate at 78% of ATH — no structural damage" },
+    { "name": "Cycle position", "state": "amber", "note": "-51.6% at day ~266; 2018/2022 analogs bottomed at -77/-84% around month 12-13" }
+  ],
+  "next_triggers": [
+    "ETF net flows positive for 2-3 consecutive weeks -> add second tranche",
+    "Fed pivots dovish (cut or clear signal) -> add second tranche",
+    "Price reaches $45-50k with no new structural failure -> add regardless of signals",
+    "A major exchange/stablecoin/custodian failure -> pause everything, reassess"
+  ],
+  "history": [
+    {
+      "date": "2026-07-02",
+      "stance": "STAGED ACCUMULATION",
+      "price": 60357,
+      "note": "Initial verdict. Valuation and sentiment say accumulate; flows and Fed say not all at once. Full reasoning in analysis/decisions.md entry #1."
+    }
+  ]
+}

@@ -34,7 +34,15 @@
   }
   .wrap { max-width: 980px; margin: 0 auto; padding: 0 28px; }
 
-  header { padding: 72px 0 40px; border-bottom: 1px solid var(--ink); }
+  .topnav { padding: 22px 0; border-bottom: 1px solid var(--line); }
+  .topnav .wrap { display: flex; justify-content: space-between; align-items: baseline; }
+  .topnav .brand, .topnav a { font-family: var(--mono); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-soft); text-decoration: none; }
+  .topnav .navlinks { display: flex; gap: 24px; }
+  .topnav a:hover { color: var(--accent); }
+  .livedot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 6px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+  header { padding: 56px 0 40px; border-bottom: 1px solid var(--ink); }
   .kicker {
     font-family: var(--mono); font-size: 11px; letter-spacing: 0.22em;
     text-transform: uppercase; color: var(--accent); margin-bottom: 18px;
@@ -148,6 +156,15 @@
 </style>
 </head>
 <body>
+
+<div class="topnav"><div class="wrap">
+  <span class="brand">BITCOIN HYPOTHESIS</span>
+  <span class="navlinks">
+    <a href="live.html"><span class="livedot"></span>Live</a>
+    <a href="invest.html">Case For</a>
+    <a href="dont-invest.html">Case Against</a>
+  </span>
+</div></div>
 
 <header>
   <div class="wrap">
