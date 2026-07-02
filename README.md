@@ -1,38 +1,43 @@
-# Bitcoin Hypothesis
+# bitcoin hypothesis
 
-A data-driven investigation into what actually moves Bitcoin's price — and whether it is worth an investment during the current drawdown (−52% from the October 2025 all-time high as of July 2026).
+what actually moves bitcoin's price. real data, real regressions, no vibes.
 
-**Live site:** https://sid-081205.github.io/bitcoin-hypothesis/
+btc is −52% from the oct 2025 ath. everyone has an opinion. this repo has 4,300 days of price data, 10k nlp-scored headlines, and OLS with newey-west errors instead.
 
-## What's in here
+**live site →** https://sid-081205.github.io/bitcoin-hypothesis/
 
-| Path | What it is |
-|---|---|
-| `scripts/fetch_data.py` | Pulls all raw data: BTC + macro prices (Yahoo Finance), rates/M2/CPI (FRED), Fear & Greed (alternative.me), hash rate & addresses (blockchain.info). No API keys needed. |
-| `scripts/fetch_nlp_sentiment.py` | Builds an independent NLP sentiment index: fetches ~10k Bitcoin headlines (2018–2026) from the Hacker News Algolia archive and scores them with VADER + a finance/crypto lexicon. |
-| `scripts/run_analysis.py` | All statistics: multi-factor OLS regressions (HAC errors), rolling correlations, sentiment conditioning, rate-sensitivity by era, M2 lead-lag, event studies, cycle-aligned drawdowns. Emits `docs/data.json` / `docs/data.js`. |
-| `data/` | The raw CSVs, committed for reproducibility. |
-| `analysis/results.md` | The written research findings. |
-| `docs/` | The static website (GitHub Pages). One HTML file + Chart.js + the computed data. |
+## the stack
 
-## Headline findings
+```
+scripts/fetch_data.py           # prices, rates, m2, fear&greed, hash rate. no api keys.
+scripts/fetch_nlp_sentiment.py  # ~10k headlines scored with vader + crypto lexicon
+scripts/run_analysis.py         # regressions, event studies, cycle math -> docs/data.json
+data/                           # raw csvs, committed. reproduce everything.
+analysis/results.md             # the written findings
+analysis/decisions.md           # dated decision journal. auditable reasoning chain.
+UPDATE_PLAYBOOK.md              # standing instructions for re-running the whole thing
+docs/                           # the site. static html + chart.js, served by gh pages
+```
 
-1. **Bitcoin trades as a high-beta tech-risk asset.** NASDAQ beta ≈ 0.5 is the only consistently significant macro factor, and it *rose* in the ETF era (R² 0.34 → 0.42). The "digital gold" beta is statistically zero and turned negative post-2024.
-2. **Sentiment mirrors price rather than driving it.** Price today correlates 0.57 with *tomorrow's* sentiment change; the reverse is ~0. As a signal, extreme fear (current reading: 11) has averaged +5.0% forward 30-day returns with a 63% hit rate. An independent NLP check — 10,358 headlines scored with VADER — agrees: press tone correlates 0.38 with F&G and 0.31 with same-month returns, but only 0.04 with next-month returns. June 2026 coverage was the 7.8th percentile most negative on record.
-3. **Rates matter through regime, not ticks.** Daily yield-change betas are insignificant in every era, but both post-2020 bear markets (2022, 2026) are hawkish-repricing years.
-4. **M2 is a weak explanation.** BTC YoY vs M2 YoY correlates at 0.17 (0.24 at a 7-month lag).
-5. **Governments have never been fatal.** Hostile actions produced single-digit-to-teens drawdowns with decaying impact (China's third ban: +36% in the following 30 days). The largest positive events were favorable US policy shifts — which also makes the current stalled legislation a real drag.
-6. **The current bear is flow-driven:** the Oct 10 2025 liquidation cascade ($19B), record spot-ETF outflows, treasury-company unwinds, and a hawkish Fed — not a protocol or credibility failure.
+## what the numbers say
 
-## Reproduce
+- bitcoin is a leveraged tech stock. nasdaq beta ~0.5, the only factor that survives every era. it went *up* after the etfs arrived. "digital gold" beta: statistically zero.
+- sentiment doesn't drive price. price drives sentiment (corr 0.57 with *tomorrow's* sentiment, ~0 the other way). the news is a mirror.
+- extreme fear has paid +5.0% fwd 30d, 63% hit rate. we're at 11/100.
+- rates matter by regime, not by tick. both post-2020 bears are hawkish-repricing years.
+- m2 charts are a meme. corr 0.17.
+- governments have never killed it. china's third ban: +36% in 30 days.
+- this bear is flow-driven — $19b liquidation cascade, record etf outflows, hawkish fed. nothing structural broke. hash rate still 78% of ath.
+
+## run it
 
 ```bash
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
-.venv/bin/python scripts/fetch_data.py    # refresh raw data
-.venv/bin/python scripts/run_analysis.py  # recompute everything
-open docs/index.html                      # view the site
+.venv/bin/python scripts/fetch_data.py
+.venv/bin/python scripts/run_analysis.py
+open docs/index.html
 ```
 
-## Disclaimer
+## disclaimer
 
-This is research, not financial advice. All statistics are computed from the committed raw data; past performance does not predict future results.
+research, not financial advice. every number is computed from the committed raw data. past performance predicts nothing.
